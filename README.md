@@ -25,9 +25,8 @@ bash main.sh yyy.service xxx.service ...
 
 **PS: 請務必帶上 .service 或是 .socket 完整服務名稱**
 
-會要求輸入密碼，請直接輸入電話即可(已經將 SSH 密碼及 su 切換密碼加密成參數寫入)
 
-* !!! 如果使用 Prod 請先將所有被控機器改成密碼為架....，否則必須使用原始呼叫 Playbook 方式 !!!
+
 
 
 ```shell
