@@ -1,0 +1,19 @@
+export LANG=en_US.UTF-8
+export service_arr=("$@")
+
+
+
+
+
+function conditionals(){
+  [[ -z ${service_arr[0]}  ]] && log_err "ARGS CAN NOT BE EMPTLY !!!!"
+  run
+}
+
+
+function run(){
+  for i in "${service_arr[@]:1}"; do
+    service_arr+=,$i
+  done
+  ansible-playbook --ask-vault-pass playbook.yml -e "{'service_name':[${service_arr}] } "
+}

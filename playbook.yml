@@ -1,0 +1,73 @@
+---
+- name: Restart Service
+  hosts: all
+  vars:
+    - service_name : 
+      - "{{ variable_host | default('crond.service') }}"
+      - httpd.service
+      - crond.service
+  vars_files:
+    - passwd.yml
+  tasks:
+    # - set_fact:
+    #     mount: "{{ ansible_mounts | first }}"
+    # - set_fact: disk_usage="{{ mount.size_total - mount.size_available }}"
+    # - set_fact: disk_usage_ratio="{{ disk_usage|float / mount.size_total }}"
+    # - set_fact: disk_usage_s="{{ (disk_usage|float / 1000000000) | round(1, 'common') }}GB"
+    # - set_fact: disk_total_s="{{ (mount.size_total / 1000000000) | round(1, 'common') }}GB"
+    # - set_fact: disk_usage_ratio_s="{{ 100 * (disk_usage_ratio|float) | round(1, 'common') }}%"
+
+    #  - name: Show the machine resource
+    #   debug:
+    #     msg: 
+    #       - "CPU : "
+    #       - "Memory :"
+    #       - "Disk : usage {{ disk_usage_s }} of total {{ disk_total_s }} ({{ disk_usage_ratio_s }}) " 
+
+    - name: Get CPU Memory Disk Info
+      shell: |
+        free -m | awk 'NR==2{printf "Memory Usage: %s/%sMB (%.2f%%)\n", $3,$2,$3*100/$2 }'
+        df -h  -t xfs  -t ext4 | grep -vE '^Filesystem|tmpfs|cdrom' | awk '{ print "Disk Usage:"" " $1 " " $3"/"$2" ""("$5")"}'
+        top -bn1 | grep load | awk '{printf "CPU Load: %.2f\n", $(NF-2)}'
+      register: rc
+    
+    - name: Print Statistics CPU Memory Disk Utilization 
+      debug:
+        var:
+          rc.stdout_lines
+
+    - name: Handle the error
+      block:
+        - name: Get Service Facts
+          service_facts:
+
+        - name: Assert service is running
+          assert:
+              that:
+                - "{{ item in ansible_facts.services }}"
+                - "{{ 'running' == ansible_facts.services[item]['state']}}"
+              fail_msg: "{{ item }} is not running "
+              success_msg: "{{ item }} is running "
+          loop: "{{ service_name }}"
+      rescue:
+        - name: Print when errors
+          debug:
+            msg: "I caught the {{ item }} is not running, Trying Start {{ item }}.."
+          loop: "{{ service_name }}"
+        
+        - name: Restart service
+          shell: |
+             systemctl start "{{ item }}"
+          loop: "{{ service_name }}"
+
+        - name: Get Service Facts
+          service_facts:
+
+        - name: Assert service is running
+          assert:
+              that:
+                - "{{ item in ansible_facts.services }}"
+                - "{{ 'running' == ansible_facts.services[item]['state']}}"
+              fail_msg: "{{ item }} CAN NOT STARTED !!! "
+              success_msg: "{{ item }} IS STARTING ..."
+          loop: "{{ service_name }}"
